@@ -16,6 +16,12 @@ public class P1LapchartController {
   @RequestMapping(value="/api/{id}", method=RequestMethod.GET)
   @ResponseBody
   public String getByID(@PathVariable String id, Model model) {
-    return "{\"id\":\"" + id + "\"}";
+	String url = getSource(id);  
+    return "{\"id\":\"" + id + "\", \"url\":\"" + url + "\"}";
   }
+  
+  private String getSource(String id) {
+    return "http://www.mylaps.com/api/eventlapchart?id=" + id;
+  }
+
 }
