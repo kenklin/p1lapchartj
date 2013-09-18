@@ -17,7 +17,9 @@ public class P1LapchartController {
   @ResponseBody
   public String getByID(@PathVariable String id, Model model) {
 	String url = getSource(id);  
-    return "{\"id\":\"" + id + "\", \"url\":\"" + url + "\"}";
+    String json = "{\"id\":\"" + id + "\", \"url\":\"" + url + "\"}";
+System.out.println(json);
+    return json;
   }
   
   private String getSource(String id) {
