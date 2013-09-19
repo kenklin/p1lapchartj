@@ -11,7 +11,6 @@ import org.springframework.web.client.RestTemplate;
 //import org.springframework.web.servlet.ModelAndView;
 import org.springframework.ui.Model;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -30,9 +29,10 @@ public class P1LapchartController {
     RestTemplate restTemplate = new RestTemplate();
     String mylaps_json = restTemplate.getForObject(sourceurl, String.class);
 
-    String json = enhance(mylaps_json, sourceurl);
+    JsonNode json = enhance(mylaps_json, sourceurl);
+System.out.println(json);
     
-    return json;
+    return json.toString();
   }
   
   private String getSource(String id) {
@@ -40,40 +40,59 @@ public class P1LapchartController {
   }
 
   // @see http://wiki.fasterxml.com/JacksonInFiveMinutes
-  private String enhance(String mylaps_json, String source) {
-	String json = null;
+  private JsonNode enhance(String mylaps_json, String source) {
+	JsonNode rootNode = null;//String json = null;
     try {
       ObjectMapper m = new ObjectMapper();
-      JsonNode rootNode = m.readTree(mylaps_json);
+      rootNode = m.readTree(mylaps_json);
 
       // Add data.meta
       ObjectNode metaObj = ((ObjectNode)rootNode).putObject("meta");
       metaObj.put("status", "0");
       metaObj.put("source", source);
-      
-      // Delete properties from original mylaps.com JSON that we don't use
+
       JsonNode lapchartNode = rootNode.path("lapchart");
       if (lapchartNode instanceof ObjectNode) {
+        // Add data.laps by parsing data.lapchart.positions
+/*
+  	  data.p1laps = {};
+  	  for (var position=0; position<data.lapchart.positions.length; position++) {
+  		for (var lap=0; lap<data.lapchart.laps.length; lap++) {
+  			if (data.lapchart.positions[position][lap] != undefined) {
+  				var startNumber = data.lapchart.positions[position][lap].startNumber;
+  				if (data.lapchart.positions[position][lap] != undefined && startNumber != undefined && startNumber != "") {
+  					if (data.p1laps[startNumber] == undefined) {
+  						data.p1laps[startNumber] = [];
+  					}
+  					data.p1laps[startNumber][lap] = position+1;
+  				}
+  			}
+  		}
+  	}
+*/
+        ObjectNode p1lapsObj = ((ObjectNode)rootNode).putObject("p1laps");
+        for (JsonNode positionNode : lapchartNode.path("positions")) {
+//System.out.println(positionNode);
+//          for ()
+        }
+      
+        // Delete properties from original mylaps.com JSON that we don't use
         ((ObjectNode)lapchartNode).remove("laps");
         ((ObjectNode)lapchartNode).remove("positions");
-      }
-      try {
-        ArrayNode participantsArray = (ArrayNode)lapchartNode.path("participants");
-        for (JsonNode participantNode : participantsArray) {
-          if (participantNode instanceof ObjectNode) {
-    	    ((ObjectNode)participantNode).remove("color");
+        JsonNode participantsNode = lapchartNode.path("participants");
+        if (participantsNode instanceof ArrayNode) {
+          for (JsonNode participantNode : (ArrayNode)participantsNode) {
+            if (participantNode instanceof ObjectNode) {
+    	      ((ObjectNode)participantNode).remove("color");
+            }
           }
         }
-      } catch (Exception e) {
-    	e.printStackTrace();
-      }
+      } // lapchartNode
 
-      json = rootNode.toString();
     } catch (IOException e) {
       e.printStackTrace();
     }
-System.out.println(json);
     
-    return json;
+    return rootNode;
   }
 }
