@@ -14,6 +14,7 @@ import org.springframework.ui.Model;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 @Controller
@@ -29,18 +30,6 @@ public class P1LapchartController {
     RestTemplate restTemplate = new RestTemplate();
     String mylaps_json = restTemplate.getForObject(url, String.class);
 
-    try {
-      ObjectMapper m = new ObjectMapper();
-      JsonNode rootNode = m.readTree(mylaps_json);
-
-      ObjectNode lapchartNode = (ObjectNode)rootNode.path("lapchart");
-      lapchartNode.remove("laps");
-      lapchartNode.remove("positions");
-System.out.println(rootNode.toString());
-    } catch (IOException e) {
-System.err.println(e);
-    }
-    
     String json = enhance(mylaps_json);
     
     return json;
@@ -50,7 +39,34 @@ System.err.println(e);
     return "http://www.mylaps.com/api/eventlapchart?id=" + id;
   }
 
-  private String enhance(String mylaps) {
-	return mylaps;
+  private String enhance(String mylaps_json) {
+	String json = null;
+    try {
+      ObjectMapper m = new ObjectMapper();
+      JsonNode rootNode = m.readTree(mylaps_json);
+
+      // Delete properties from original mylaps.com JSON that we don't use
+      JsonNode lapchartJson = rootNode.path("lapchart");
+      ObjectNode lapchartObj = (ObjectNode)lapchartJson;
+      lapchartObj.remove("laps");
+      lapchartObj.remove("positions");
+      try {
+        ArrayNode participantsArray = (ArrayNode)lapchartJson.path("participants");
+        for (JsonNode participantJson : participantsArray) {
+    	  ObjectNode participantObj = (ObjectNode)participantJson;
+    	  participantObj.remove("color");
+        }
+      } catch (Exception e) {
+        // Might be com.fasterxml.jackson.databind.node.MissingNode
+    	e.printStackTrace();
+      }
+
+      json = rootNode.toString();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+System.out.println(json);
+    
+    return json;
   }
 }
