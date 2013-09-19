@@ -71,18 +71,31 @@ System.out.println(json);
   	}
 */
         ObjectNode p1lapsObj = ((ObjectNode)rootNode).putObject("p1laps");
+        ObjectNode positionsObj = ((ObjectNode)p1lapsObj).putObject("positions");
+        int position = 0;
         for (JsonNode positionNode : lapchartNode.path("positions")) {
-//System.out.println(positionNode);
-//          for ()
+          if (positionNode.isArray()) {
+            int lap = 0;
+            for (JsonNode p : (ArrayNode)positionNode) {
+              int startNumber = p.path("startNumber").asInt();
+System.out.println(startNumber);
+              if (p1lapsObj.isArray()) {
+System.out.println();                
+              }
+              lap++;
+            }
+System.out.println();
+          }
+          position++;
         }
       
         // Delete properties from original mylaps.com JSON that we don't use
         ((ObjectNode)lapchartNode).remove("laps");
         ((ObjectNode)lapchartNode).remove("positions");
         JsonNode participantsNode = lapchartNode.path("participants");
-        if (participantsNode instanceof ArrayNode) {
+        if (participantsNode.isArray()) {
           for (JsonNode participantNode : (ArrayNode)participantsNode) {
-            if (participantNode instanceof ObjectNode) {
+            if (participantNode.isObject()) {
     	      ((ObjectNode)participantNode).remove("color");
             }
           }
