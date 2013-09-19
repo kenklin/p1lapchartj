@@ -1,12 +1,20 @@
 package com.p1software.p1lapchart;
 
+import java.io.IOException;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.client.RestTemplate;
 //import org.springframework.web.servlet.ModelAndView;
 import org.springframework.ui.Model;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 @Controller
 public class P1LapchartController {
@@ -17,8 +25,24 @@ public class P1LapchartController {
   @ResponseBody
   public String getByID(@PathVariable String id, Model model) {
 	String url = getSource(id);  
-    String json = "{\"id\":\"" + id + "\", \"url\":\"" + url + "\"}";
-System.out.println(json);
+
+    RestTemplate restTemplate = new RestTemplate();
+    String mylaps_json = restTemplate.getForObject(url, String.class);
+
+    try {
+      ObjectMapper m = new ObjectMapper();
+      JsonNode rootNode = m.readTree(mylaps_json);
+
+      ObjectNode lapchartNode = (ObjectNode)rootNode.path("lapchart");
+      lapchartNode.remove("laps");
+      lapchartNode.remove("positions");
+System.out.println(rootNode.toString());
+    } catch (IOException e) {
+System.err.println(e);
+    }
+    
+    String json = enhance(mylaps_json);
+    
     return json;
   }
   
@@ -26,4 +50,7 @@ System.out.println(json);
     return "http://www.mylaps.com/api/eventlapchart?id=" + id;
   }
 
+  private String enhance(String mylaps) {
+	return mylaps;
+  }
 }
