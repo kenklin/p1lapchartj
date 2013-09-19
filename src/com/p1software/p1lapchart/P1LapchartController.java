@@ -25,12 +25,12 @@ public class P1LapchartController {
   @RequestMapping(value="/api/{id}", method=RequestMethod.GET)
   @ResponseBody
   public String getByID(@PathVariable String id, Model model) {
-	String url = getSource(id);  
+	String sourceurl = getSource(id);  
 
     RestTemplate restTemplate = new RestTemplate();
-    String mylaps_json = restTemplate.getForObject(url, String.class);
+    String mylaps_json = restTemplate.getForObject(sourceurl, String.class);
 
-    String json = enhance(mylaps_json);
+    String json = enhance(mylaps_json, sourceurl);
     
     return json;
   }
@@ -39,25 +39,32 @@ public class P1LapchartController {
     return "http://www.mylaps.com/api/eventlapchart?id=" + id;
   }
 
-  private String enhance(String mylaps_json) {
+  // @see http://wiki.fasterxml.com/JacksonInFiveMinutes
+  private String enhance(String mylaps_json, String source) {
 	String json = null;
     try {
       ObjectMapper m = new ObjectMapper();
       JsonNode rootNode = m.readTree(mylaps_json);
 
+      // Add data.meta
+      ObjectNode metaObj = ((ObjectNode)rootNode).putObject("meta");
+      metaObj.put("status", "0");
+      metaObj.put("source", source);
+      
       // Delete properties from original mylaps.com JSON that we don't use
-      JsonNode lapchartJson = rootNode.path("lapchart");
-      ObjectNode lapchartObj = (ObjectNode)lapchartJson;
-      lapchartObj.remove("laps");
-      lapchartObj.remove("positions");
+      JsonNode lapchartNode = rootNode.path("lapchart");
+      if (lapchartNode instanceof ObjectNode) {
+        ((ObjectNode)lapchartNode).remove("laps");
+        ((ObjectNode)lapchartNode).remove("positions");
+      }
       try {
-        ArrayNode participantsArray = (ArrayNode)lapchartJson.path("participants");
-        for (JsonNode participantJson : participantsArray) {
-    	  ObjectNode participantObj = (ObjectNode)participantJson;
-    	  participantObj.remove("color");
+        ArrayNode participantsArray = (ArrayNode)lapchartNode.path("participants");
+        for (JsonNode participantNode : participantsArray) {
+          if (participantNode instanceof ObjectNode) {
+    	    ((ObjectNode)participantNode).remove("color");
+          }
         }
       } catch (Exception e) {
-        // Might be com.fasterxml.jackson.databind.node.MissingNode
     	e.printStackTrace();
       }
 
