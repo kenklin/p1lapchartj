@@ -71,23 +71,28 @@ System.out.println(json);
   	}
 */
         ObjectNode p1lapsObj = ((ObjectNode)rootNode).putObject("p1laps");
-        ObjectNode positionsObj = ((ObjectNode)p1lapsObj).putObject("positions");
         int position = 0;
         for (JsonNode positionNode : lapchartNode.path("positions")) {
           if (positionNode.isArray()) {
             int lap = 0;
             for (JsonNode p : (ArrayNode)positionNode) {
-              int startNumber = p.path("startNumber").asInt();
-System.out.println(startNumber);
-              if (p1lapsObj.isArray()) {
-System.out.println();                
+              String startNumber = p.path("startNumber").textValue();	// car number
+              try {
+                JsonNode p1lapsStartNumberNode = p1lapsObj.path(startNumber);
+                if (p1lapsStartNumberNode.isMissingNode()) {
+                  p1lapsStartNumberNode = p1lapsObj.putArray(startNumber);
+                }
+                ((ArrayNode)p1lapsStartNumberNode).insert(lap, position+1);
+              } catch (Exception e) {
+            	// null or not a number
+System.out.println("Bad startNumberStr '" + startNumber + "' " + p);
+e.printStackTrace();
               }
               lap++;
-            }
-System.out.println();
+            } // lap
           }
           position++;
-        }
+        } // position
       
         // Delete properties from original mylaps.com JSON that we don't use
         ((ObjectNode)lapchartNode).remove("laps");
