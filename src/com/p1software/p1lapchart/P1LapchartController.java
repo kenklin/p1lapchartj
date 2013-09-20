@@ -44,7 +44,7 @@ public class P1LapchartController {
       rootNode = m.readTree(mylaps_json);
 
       // Add data.meta
-      ObjectNode metaObj = ((ObjectNode)rootNode).putObject("meta");
+      ObjectNode metaObj = ((ObjectNode)rootNode).putObject("p1meta");
       metaObj.put("status", "0");
       metaObj.put("source", source);
 
