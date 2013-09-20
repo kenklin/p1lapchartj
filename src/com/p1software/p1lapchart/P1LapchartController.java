@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.RestTemplate;
-//import org.springframework.web.servlet.ModelAndView;
 import org.springframework.ui.Model;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,8 +17,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 @Controller
 public class P1LapchartController {
-
-  // e.g., http://localhost:8080/p1lapchartj/api/123.html
+  // e.g., http://localhost:8080/p1lapchartj/api/12345
   // @see http://docs.spring.io/spring/docs/3.2.4.RELEASE/spring-framework-reference/htmlsingle/#mvc-ann-responsebody
   @RequestMapping(value="/api/{id}", method=RequestMethod.GET)
   @ResponseBody
@@ -30,7 +28,6 @@ public class P1LapchartController {
     String mylaps_json = restTemplate.getForObject(sourceurl, String.class);
 
     JsonNode json = enhance(mylaps_json, sourceurl);
-System.out.println(json);
     
     return json.toString();
   }
@@ -54,22 +51,6 @@ System.out.println(json);
       JsonNode lapchartNode = rootNode.path("lapchart");
       if (lapchartNode instanceof ObjectNode) {
         // Add data.laps by parsing data.lapchart.positions
-/*
-  	  data.p1laps = {};
-  	  for (var position=0; position<data.lapchart.positions.length; position++) {
-  		for (var lap=0; lap<data.lapchart.laps.length; lap++) {
-  			if (data.lapchart.positions[position][lap] != undefined) {
-  				var startNumber = data.lapchart.positions[position][lap].startNumber;
-  				if (data.lapchart.positions[position][lap] != undefined && startNumber != undefined && startNumber != "") {
-  					if (data.p1laps[startNumber] == undefined) {
-  						data.p1laps[startNumber] = [];
-  					}
-  					data.p1laps[startNumber][lap] = position+1;
-  				}
-  			}
-  		}
-  	}
-*/
         ObjectNode p1lapsObj = ((ObjectNode)rootNode).putObject("p1laps");
         int position = 0;
         for (JsonNode positionNode : lapchartNode.path("positions")) {
@@ -84,9 +65,7 @@ System.out.println(json);
                 }
                 ((ArrayNode)p1lapsStartNumberNode).insert(lap, position+1);
               } catch (Exception e) {
-            	// null or not a number
-System.out.println("Bad startNumberStr '" + startNumber + "' " + p);
-e.printStackTrace();
+System.out.println("Bad startNumberStr '" + startNumber + "' " + p); e.printStackTrace();
               }
               lap++;
             } // lap
