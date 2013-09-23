@@ -1,7 +1,9 @@
 package com.p1software.p1lapchart;
 
 import java.io.IOException;
+import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,19 +18,39 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 @Controller
-public class P1LapchartController {
+public class P1LapchartController implements InitializingBean {
+  private static ConcurrentHashMap<String, JsonNode> cache = null;
+  private static ObjectMapper mapper = null;   	
+
+  public void afterPropertiesSet() {
+    cache = new ConcurrentHashMap<String, JsonNode>();
+    mapper = new ObjectMapper();   	
+  }
+  
   // e.g., http://localhost:8080/p1lapchartj/api/12345
   // @see http://docs.spring.io/spring/docs/3.2.4.RELEASE/spring-framework-reference/html/mvc.html#mvc-config
   // @see https://gist.github.com/kdonald/2012289/raw/363289ee8652823f770ef82f594e9a8f15048090/ExampleController.java
   @RequestMapping(value="/api/{id}", method=RequestMethod.GET)
   @ResponseBody
   public JsonNode getByID(@PathVariable String id, Model model) {
-    String sourceurl = getSource(id);  
-
-    RestTemplate restTemplate = new RestTemplate();
-    String mylaps_json = restTemplate.getForObject(sourceurl, String.class);
-
-    JsonNode json = enhance(mylaps_json, sourceurl);
+	JsonNode json = null;
+    try {
+      String sourceurl = getSource(id);  
+      if ((json = cache.get(sourceurl)) != null) {
+        System.out.println("getForObject(" + sourceurl + ") cached");
+      } else {
+        RestTemplate restTemplate = new RestTemplate();
+        String mylaps_json = restTemplate.getForObject(sourceurl, String.class);
+	    System.out.println("getForObject(" + sourceurl + ") success");
+        json = enhance(mylaps_json, sourceurl);
+        cache.put(sourceurl,  json);
+      }
+    } catch (Exception e) {
+      try {
+        json = mapper.readTree("{'p1meta': {'status': 404}}");
+      } catch (Exception ee) {
+      }
+    }
     return json;
   }
   
@@ -38,10 +60,9 @@ public class P1LapchartController {
 
   // @see http://wiki.fasterxml.com/JacksonInFiveMinutes
   private JsonNode enhance(String mylaps_json, String source) {
-	JsonNode rootNode = null;//String json = null;
+	JsonNode rootNode = null;
     try {
-      ObjectMapper m = new ObjectMapper();
-      rootNode = m.readTree(mylaps_json);
+      rootNode = mapper.readTree(mylaps_json);
 
       // Add data.meta
       ObjectNode metaObj = ((ObjectNode)rootNode).putObject("p1meta");
