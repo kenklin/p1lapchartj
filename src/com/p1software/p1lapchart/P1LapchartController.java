@@ -18,18 +18,18 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 @Controller
 public class P1LapchartController {
   // e.g., http://localhost:8080/p1lapchartj/api/12345
-  // @see http://docs.spring.io/spring/docs/3.2.4.RELEASE/spring-framework-reference/htmlsingle/#mvc-ann-responsebody
+  // @see http://docs.spring.io/spring/docs/3.2.4.RELEASE/spring-framework-reference/html/mvc.html#mvc-config
+  // @see https://gist.github.com/kdonald/2012289/raw/363289ee8652823f770ef82f594e9a8f15048090/ExampleController.java
   @RequestMapping(value="/api/{id}", method=RequestMethod.GET)
   @ResponseBody
-  public String getByID(@PathVariable String id, Model model) {
-	String sourceurl = getSource(id);  
+  public JsonNode getByID(@PathVariable String id, Model model) {
+    String sourceurl = getSource(id);  
 
     RestTemplate restTemplate = new RestTemplate();
     String mylaps_json = restTemplate.getForObject(sourceurl, String.class);
 
     JsonNode json = enhance(mylaps_json, sourceurl);
-    
-    return json.toString();
+    return json;
   }
   
   private String getSource(String id) {
