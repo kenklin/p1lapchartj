@@ -7,4 +7,4 @@ Key technologies:
 - [Java](http://java.com/)
 - [Spring](http://spring.io/)
 - [Jackson](https://github.com/FasterXML/jackson)
-- [AWS Elastic Beanstalk](http://aws.amazon.com/)
+- [Amazon Web Services](http://aws.amazon.com/)
