@@ -3,6 +3,8 @@ package com.p1software.p1lapchart;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.servlet.http.HttpServletResponse;
+
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.ui.Model;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,12 +28,18 @@ public class P1LapchartController implements InitializingBean {
     mapper = new ObjectMapper();   	
   }
   
+  public static void addCORSHeaders(HttpServletResponse resp) {
+    resp.addHeader("Access-Control-Allow-Origin", "*");
+    resp.addHeader("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
+    resp.addHeader("Access-Control-Allow-Headers", "Content-Type");
+  }
+
   // e.g., http://localhost:8080/p1lapchartj/api/12345
   // @see http://docs.spring.io/spring/docs/3.2.4.RELEASE/spring-framework-reference/html/mvc.html#mvc-config
   // @see https://gist.github.com/kdonald/2012289/raw/363289ee8652823f770ef82f594e9a8f15048090/ExampleController.java
   @RequestMapping(value="/api/{id}", method=RequestMethod.GET)
   @ResponseBody
-  public JsonNode getByID(@PathVariable String id, Model model) {
+  public JsonNode getByID(@PathVariable String id, HttpServletResponse resp) {
 	JsonNode json = null;
     try {
       String sourceurl = getSource(id);  
@@ -45,6 +52,7 @@ public class P1LapchartController implements InitializingBean {
         json = enhance(mylaps_json, sourceurl);
         cache.put(sourceurl,  json);
       }
+      addCORSHeaders(resp);
     } catch (Exception e) {
       try {
         json = mapper.readTree("{'p1meta': {'status': 404}}");
