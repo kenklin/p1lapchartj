@@ -3,6 +3,7 @@ package com.p1software.p1lapchart;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.logging.log4j.LogManager;
@@ -43,16 +44,16 @@ public class P1LapchartController implements InitializingBean {
   // @see https://gist.github.com/kdonald/2012289/raw/363289ee8652823f770ef82f594e9a8f15048090/ExampleController.java
   @RequestMapping(value="/api/{id}", method=RequestMethod.GET)
   @ResponseBody
-  public JsonNode getByID(@PathVariable String id, HttpServletResponse resp) {
+  public JsonNode getByID(@PathVariable String id, HttpServletRequest req, HttpServletResponse resp) {
 	JsonNode json = null;
     try {
       String sourceurl = getSource(id);  
       if ((json = cache.get(sourceurl)) != null) {
-        logger.info("getByID(%s) = %s", id, "cached");
+        logger.info("%s> getByID(%s) = %s", req.getRemoteAddr(), id, "cached");
       } else {
         RestTemplate restTemplate = new RestTemplate();
         String mylaps_json = restTemplate.getForObject(sourceurl, String.class);
-	    logger.info("getByID(%s) = %s", id, "live");
+	    logger.info("%s> getByID(%s) = %s", req.getRemoteAddr(), id, "live");
         json = enhance(mylaps_json, sourceurl);
         cache.put(sourceurl,  json);
       }
