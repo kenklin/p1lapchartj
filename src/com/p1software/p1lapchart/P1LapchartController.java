@@ -24,12 +24,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class P1LapchartController implements InitializingBean {
   private static ConcurrentHashMap<String, JsonNode> cache = null;
   private static ObjectMapper mapper = null;
-  private static Logger logger = null; //LogManager.getLogger("p1lapchart");
+  private static Logger logger = null;
 
   public void afterPropertiesSet() {
     cache = new ConcurrentHashMap<String, JsonNode>();
     mapper = new ObjectMapper();
-    logger = LogManager.getLogger(this.getClass().getPackage().getName());
+    logger = LogManager.getFormatterLogger(this.getClass().getPackage().getName());
   }
   
   public static void addCORSHeaders(HttpServletResponse resp) {
@@ -48,11 +48,11 @@ public class P1LapchartController implements InitializingBean {
     try {
       String sourceurl = getSource(id);  
       if ((json = cache.get(sourceurl)) != null) {
-        logger.info("getByID(" + id + ") cached");
+        logger.info("getByID(%s) = %s", id, "cached");
       } else {
         RestTemplate restTemplate = new RestTemplate();
         String mylaps_json = restTemplate.getForObject(sourceurl, String.class);
-	    logger.info("getByID(" + id + ") success");
+	    logger.info("getByID(%s) = %s", id, "live");
         json = enhance(mylaps_json, sourceurl);
         cache.put(sourceurl,  json);
       }
@@ -61,6 +61,7 @@ public class P1LapchartController implements InitializingBean {
       try {
         json = mapper.readTree("{'p1meta': {'status': 404}}");
       } catch (Exception ee) {
+  	    logger.error("mapper.readTree", ee);
       }
     }
     return json;
