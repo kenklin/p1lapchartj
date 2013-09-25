@@ -5,6 +5,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,11 +23,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 @Controller
 public class P1LapchartController implements InitializingBean {
   private static ConcurrentHashMap<String, JsonNode> cache = null;
-  private static ObjectMapper mapper = null;   	
+  private static ObjectMapper mapper = null;
+  private static Logger logger = null; //LogManager.getLogger("p1lapchart");
 
   public void afterPropertiesSet() {
     cache = new ConcurrentHashMap<String, JsonNode>();
-    mapper = new ObjectMapper();   	
+    mapper = new ObjectMapper();
+    logger = LogManager.getLogger(this.getClass().getPackage().getName());
   }
   
   public static void addCORSHeaders(HttpServletResponse resp) {
@@ -44,11 +48,11 @@ public class P1LapchartController implements InitializingBean {
     try {
       String sourceurl = getSource(id);  
       if ((json = cache.get(sourceurl)) != null) {
-        System.out.println("getForObject(" + sourceurl + ") cached");
+        logger.info("getByID(" + id + ") cached");
       } else {
         RestTemplate restTemplate = new RestTemplate();
         String mylaps_json = restTemplate.getForObject(sourceurl, String.class);
-	    System.out.println("getForObject(" + sourceurl + ") success");
+	    logger.info("getByID(" + id + ") success");
         json = enhance(mylaps_json, sourceurl);
         cache.put(sourceurl,  json);
       }
@@ -94,7 +98,7 @@ public class P1LapchartController implements InitializingBean {
                 }
                 ((ArrayNode)p1lapsStartNumberNode).insert(lap, position+1);
               } catch (Exception e) {
-System.out.println("Bad startNumberStr '" + startNumber + "' " + p); e.printStackTrace();
+            	logger.error("Bad startNumberStr '" + startNumber + "' " + p, e);
               }
               lap++;
             } // lap
@@ -116,7 +120,7 @@ System.out.println("Bad startNumberStr '" + startNumber + "' " + p); e.printStac
       } // lapchartNode
 
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Unexpected IOException", e);
     }
     
     return rootNode;
