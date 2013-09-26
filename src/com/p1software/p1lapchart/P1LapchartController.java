@@ -6,8 +6,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,12 +23,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class P1LapchartController implements InitializingBean {
   private static ConcurrentHashMap<String, JsonNode> cache = null;
   private static ObjectMapper mapper = null;
-  private static Logger logger = null;
+  private static P1LapchartLogger logger = null;
 
   public void afterPropertiesSet() {
     cache = new ConcurrentHashMap<String, JsonNode>();
     mapper = new ObjectMapper();
-    logger = LogManager.getFormatterLogger(this.getClass().getPackage().getName());
+    logger = new P1LapchartLogger();
   }
   
   public static void addCORSHeaders(HttpServletResponse resp) {
@@ -49,11 +47,11 @@ public class P1LapchartController implements InitializingBean {
     try {
       String sourceurl = getSource(id);  
       if ((json = cache.get(sourceurl)) != null) {
-        logger.info("%s> getByID(%s) = %s", req.getRemoteAddr(), id, "cached");
+        logger.info(req.getRemoteAddr(), id, "cached");
       } else {
         RestTemplate restTemplate = new RestTemplate();
         String mylaps_json = restTemplate.getForObject(sourceurl, String.class);
-	    logger.info("%s> getByID(%s) = %s", req.getRemoteAddr(), id, "live");
+	    logger.info(req.getRemoteAddr(), id, "live");
         json = enhance(mylaps_json, sourceurl);
         cache.put(sourceurl,  json);
       }
