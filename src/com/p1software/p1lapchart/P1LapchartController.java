@@ -47,11 +47,11 @@ public class P1LapchartController implements InitializingBean {
     try {
       String sourceurl = getSource(id);  
       if ((json = cache.get(sourceurl)) != null) {
-        logger.info(req.getRemoteAddr(), id, "cached");
+        logger.audit(req.getRemoteAddr(), id, "cached");
       } else {
         RestTemplate restTemplate = new RestTemplate();
         String mylaps_json = restTemplate.getForObject(sourceurl, String.class);
-	    logger.info(req.getRemoteAddr(), id, "live");
+	    logger.audit(req.getRemoteAddr(), id, "live");
         json = enhance(mylaps_json, sourceurl);
         cache.put(sourceurl,  json);
       }

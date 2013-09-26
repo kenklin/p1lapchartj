@@ -11,7 +11,7 @@ public class P1LapchartLogger {
     logger = LogManager.getFormatterLogger(this.getClass().getPackage().getName());
   }
 
-  public void info(String remoteAddr, String id, String status) {
+  public void audit(String remoteAddr, String id, String status) {
     logger.info(FMT, remoteAddr, id, status);
   }
   
