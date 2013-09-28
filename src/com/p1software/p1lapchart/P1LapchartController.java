@@ -96,7 +96,15 @@ public class P1LapchartController implements InitializingBean {
                 if (p1lapsStartNumberNode.isMissingNode()) {
                   p1lapsStartNumberNode = p1lapsObj.putArray(startNumber);
                 }
-                ((ArrayNode)p1lapsStartNumberNode).insert(lap, position+1);
+                ArrayNode p1lapsStartNumberArrayNode = (ArrayNode)p1lapsStartNumberNode;
+                if (lap + 1 <= p1lapsStartNumberArrayNode.size()) {
+                  p1lapsStartNumberArrayNode.remove(lap);	// remove old value so insert() is replace
+                } else {
+                  while (p1lapsStartNumberArrayNode.size() < lap) {
+                    p1lapsStartNumberArrayNode.add(-1);		// dummy pad
+                  }
+                }
+                p1lapsStartNumberArrayNode.insert(lap, position+1);
               } catch (Exception e) {
             	logger.error("Bad startNumberStr '" + startNumber + "' " + p, e);
               }
@@ -105,7 +113,7 @@ public class P1LapchartController implements InitializingBean {
           }
           position++;
         } // position
-      
+       
         // Delete properties from original mylaps.com JSON that we don't use
         ((ObjectNode)lapchartNode).remove("laps");
         ((ObjectNode)lapchartNode).remove("positions");
