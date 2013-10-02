@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import org.apache.logging.log4j.Logger;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
@@ -34,24 +38,55 @@ import com.amazonaws.services.simpledb.util.SimpleDBUtils;
 public class SimpleDBCounters extends AmazonSimpleDBClient {
 	class Counter {
 		public long k = 0;
-		public long unflushed = 0;	// delta that hasn't been put to SimpleDB
+		public long unflushedDelta = 0;	// delta that hasn't been put to SimpleDB
 		public Counter(long k) {
 			this.k = k;
-			this.unflushed = 0;
+			this.unflushedDelta = 0;
 		}
 	};
 
 	public static final int			MAX_LONG_DIGITS = 19;
 	protected static String			VALUE_ITEMNAME = "value";
+
 	protected AmazonSimpleDB		sdb = null;
 	protected String				domain = null;
+	protected Logger				logger = null;
 	protected Map<String, Counter>	counters = null;
+	protected Timer					flushTimer = null;
+	protected int					unflushedCounters = 0;	// Number of unflushed Counter
 	
-	public SimpleDBCounters(AmazonSimpleDB sdb, String domain) {
+	public SimpleDBCounters() {
+	}
+		
+	public SimpleDBCounters(AmazonSimpleDB sdb, String domain, int flushInterval) {
+		init(sdb, domain, flushInterval);
+	}
+	
+	public void init(AmazonSimpleDB sdb, String domain, int flushInterval) {
 		this.sdb = sdb;
 		this.domain = domain;   
 		createDomain(new CreateDomainRequest(domain));
 		counters = new HashMap<String, Counter>();
+		setFlushTimer(flushInterval);
+	}
+	
+	public void setLogger(Logger logger) {
+		this.logger = logger;
+	}
+	
+    class FlushTimerTask extends TimerTask {
+		public void run() {
+			flush();
+		}
+    }
+	    
+	public void setFlushTimer(int interval) {
+		info("setFlushTimer(" + interval + ")");
+		if (flushTimer != null) {
+			flushTimer.cancel();
+		}
+        flushTimer = new Timer();
+        flushTimer.schedule(new FlushTimerTask(), 0, interval);
 	}
 	
 	/**
@@ -68,13 +103,15 @@ public class SimpleDBCounters extends AmazonSimpleDBClient {
 	public synchronized long incrCounter(String name, long n)
 			throws AmazonServiceException, AmazonClientException
     {
+		unflushedCounters++;
+
 		Counter c = counters.get(name);
 		if (c != null) {
 			c.k += n;
-			c.unflushed += n;
 		} else {
 			c = new Counter(n);
 		}
+		c.unflushedDelta += n;
 		counters.put(name, c);
 		
 		return c.k;
@@ -110,13 +147,15 @@ public class SimpleDBCounters extends AmazonSimpleDBClient {
 	public synchronized long decrCounter(String name, long n)
 			throws AmazonServiceException, AmazonClientException
     {
+		unflushedCounters++;
+		
 		Counter c = counters.get(name);
 		if (c != null) {
 			c.k -= n;
-			c.unflushed -= n;
 		} else {
 			c = new Counter(-n);
 		}
+		c.unflushedDelta -= n;
 		counters.put(name, c);
 		
 		return c.k;
@@ -154,6 +193,13 @@ public class SimpleDBCounters extends AmazonSimpleDBClient {
 		return counters.get(name);
 	}
 	
+	protected void info(String msg)
+	{
+		if (logger != null) {
+			logger.info(msg);
+		}		
+	}
+	
 	/**
 	 * Flushes a single in-memory counter to the SimpleDB if it has not been
 	 * flushed.  Synchronization is the responsibility of the caller. 
@@ -165,8 +211,10 @@ public class SimpleDBCounters extends AmazonSimpleDBClient {
 	{
 		boolean flushed = false;
 		Counter c = entry.getValue();
+
+		info("flush(" + entry.getKey() + ") =  " + c.unflushedDelta);
 		
-		if (c != null && c.unflushed != 0) {
+		if (c != null && c.unflushedDelta != 0) {
 			try {
 				// Get SimpleDB item
 				GetAttributesRequest getReq = new GetAttributesRequest(domain, VALUE_ITEMNAME);
@@ -178,17 +226,18 @@ public class SimpleDBCounters extends AmazonSimpleDBClient {
 						Attribute getAttr = getAttrs.get(0);
 						String valString = getAttr.getValue();
 						long valLong = SimpleDBUtils.decodeZeroPaddingLong(valString);
-System.out.println("flush getAttributes: id=" + entry.getKey() + ", value=" + valLong);							
+						info("flush getAttributes: id=" + entry.getKey() + ", value=" + valLong);
+
 						// Set up sdb PutAttributesRequest
-						String newValString = SimpleDBUtils.encodeZeroPadding(valLong + c.unflushed, MAX_LONG_DIGITS);
+						String newValString = SimpleDBUtils.encodeZeroPadding(valLong + c.unflushedDelta, MAX_LONG_DIGITS);
 						List<ReplaceableAttribute> putAttrs = new ArrayList<ReplaceableAttribute>(1);
 						putAttrs.add(new ReplaceableAttribute(VALUE_ITEMNAME, newValString, true));
 
-						// Conditionally update SimpleDB item
+						// Conditionally update SimpleDB item (might throw ConditionalCheckFailed)
 						UpdateCondition cond = new UpdateCondition(VALUE_ITEMNAME, valString, true);
 						PutAttributesRequest putReq = new PutAttributesRequest(domain, VALUE_ITEMNAME, putAttrs, cond);
 						sdb.putAttributes(putReq);
-System.out.println("flush putAttributes 1: id=" + entry.getKey() + ", value=" + newValString);
+						info("flush putAttributes 1: id=" + entry.getKey() + ", value=" + newValString);
 					} else {
 						String newValString = SimpleDBUtils.encodeZeroPadding(c.k, MAX_LONG_DIGITS);
 						List<ReplaceableAttribute> putAttrs = new ArrayList<ReplaceableAttribute>();
@@ -197,10 +246,10 @@ System.out.println("flush putAttributes 1: id=" + entry.getKey() + ", value=" + 
 						// Create SimpleDB item
 						PutAttributesRequest putReq = new PutAttributesRequest(domain, VALUE_ITEMNAME, putAttrs);
 						sdb.putAttributes(putReq);
-System.out.println("flush putAttributes 2: id=" + entry.getKey() + ", value=" + newValString);
+						info("flush putAttributes 2: id=" + entry.getKey() + ", value=" + newValString);
 					}
 				} else {
-					assert(c.k == c.unflushed);
+					assert(c.k == c.unflushedDelta);
 					String newValString = SimpleDBUtils.encodeZeroPadding(c.k, MAX_LONG_DIGITS);
 					List<ReplaceableAttribute> putAttrs = new ArrayList<ReplaceableAttribute>();
 					putAttrs.add(new ReplaceableAttribute(VALUE_ITEMNAME, newValString, true));
@@ -208,13 +257,19 @@ System.out.println("flush putAttributes 2: id=" + entry.getKey() + ", value=" + 
 					// Create SimpleDB item
 					PutAttributesRequest putReq = new PutAttributesRequest(domain, VALUE_ITEMNAME, putAttrs);
 					sdb.putAttributes(putReq);
-System.out.println("flush putAttributes 3: id=" + entry.getKey() + ", value=" + newValString);
+					info("flush putAttributes 3: id=" + entry.getKey() + ", value=" + newValString);
 				}
 			
 				flushed = true;
-				c.unflushed = 0;	// All deltas have been flushed
+				c.unflushedDelta = 0;	// All deltas have been flushed
+			} catch (AmazonServiceException awse) {
+				// http://docs.aws.amazon.com/AmazonSimpleDB/latest/DeveloperGuide/APIError.html
+				if (awse.getErrorCode().equalsIgnoreCase("ConditionalCheckFailed")) {
+					info("ConditionalCheckFailed - skipping this flush for " + entry.getKey());					
+				} else {
+					awse.printStackTrace();
+				}
 			} catch (Exception e) {
-				System.out.println(e);
 				e.printStackTrace();
 			}
 		}
@@ -228,15 +283,18 @@ System.out.println("flush putAttributes 3: id=" + entry.getKey() + ", value=" + 
 	 * 
 	 * @return		Number of entries that were not successfully flushed
 	 */
-	public synchronized long flush()
+	public synchronized int flush()
 	{
-		long unflushed = 0;
-		for (Map.Entry<String, Counter> entry : counters.entrySet()) {
-			if (!flush(entry)) {
-				unflushed++;
+		info("flush(" + unflushedCounters + ")");
+		if (unflushedCounters > 0) {
+			unflushedCounters = 0;
+			for (Map.Entry<String, Counter> entry : counters.entrySet()) {
+				if (!flush(entry)) {
+					unflushedCounters++;
+				}
 			}
 		}
-		return unflushed;
+		return unflushedCounters;
 	}
 	
 	/**

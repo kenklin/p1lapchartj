@@ -5,7 +5,6 @@ import org.apache.logging.log4j.Logger;
 
 import com.amazonaws.services.simpledb.AmazonSimpleDB;
 import com.amazonaws.services.simpledb.AmazonSimpleDBClient;
-import com.amazonaws.services.simpledb.model.SelectResult;
 
 public class P1LapchartLogger {
   private static String FMT = "{'remoteaddr':'%s', 'id':'%s', 'status':'%s'}";
@@ -19,7 +18,8 @@ public class P1LapchartLogger {
   
     try {
       sdb = new AmazonSimpleDBClient();	// Needs AWS_ACCESS_KEY_ID and AWS_SECRET_KEY
-      counters = new SimpleDBCounters(sdb, packageName);
+      counters = new SimpleDBCounters(sdb, packageName, 10 * 1000);
+      counters.setLogger(logger);		// Allows SimpleDBCounters to call Logger.info()
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -29,15 +29,7 @@ public class P1LapchartLogger {
     logger.info(FMT, remoteAddr, id, status);
 
     try {
-      long k = counters.incrCounter(id);
-System.out.println("k(" + id + ") = " + k);
-if (k % 2 == 0) {
-	long unflushed = counters.flush();
-	System.out.println("unflushed = " + unflushed);
-	
-	SelectResult results = counters.getGlobalCounters();
-	 System.out.println(results);
-}
+      counters.incrCounter(id);
     } catch (Exception e) {
       e.printStackTrace();
     }
