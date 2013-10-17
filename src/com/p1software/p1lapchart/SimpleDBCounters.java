@@ -246,6 +246,7 @@ public class SimpleDBCounters {
 						newVal = valLong + c.unflushedDelta;
 
 						// Conditionally update SimpleDB item (might throw ConditionalCheckFailed)
+						// http://docs.aws.amazon.com/AmazonSimpleDB/latest/DeveloperGuide/ConditionalPut.html
 						cond = new UpdateCondition(VALUE_NAME, valString, true);
 					}
 				}
