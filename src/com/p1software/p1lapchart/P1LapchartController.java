@@ -37,12 +37,7 @@ public class P1LapchartController implements InitializingBean {
     resp.addHeader("Access-Control-Allow-Headers", "Content-Type");
   }
 
-  // e.g., http://localhost:8080/p1lapchartj/api/12345
-  // @see http://docs.spring.io/spring/docs/3.2.4.RELEASE/spring-framework-reference/html/mvc.html#mvc-config
-  // @see https://gist.github.com/kdonald/2012289/raw/363289ee8652823f770ef82f594e9a8f15048090/ExampleController.java
-  @RequestMapping(value="/api/{id}", method=RequestMethod.GET)
-  @ResponseBody
-  public JsonNode getByID(@PathVariable String id, HttpServletRequest req, HttpServletResponse resp) {
+  private JsonNode _getByID(String id, HttpServletRequest req, HttpServletResponse resp) {
 	JsonNode json = null;
     try {
       String sourceurl = getSource(id);  
@@ -64,6 +59,26 @@ public class P1LapchartController implements InitializingBean {
       }
     }
     return json;
+  }
+
+  // e.g., http://localhost:8080/p1lapchartj/p1lapchart/api/12345
+  // @see http://docs.spring.io/spring/docs/3.2.4.RELEASE/spring-framework-reference/html/mvc.html#mvc-config
+  // @see https://gist.github.com/kdonald/2012289/raw/363289ee8652823f770ef82f594e9a8f15048090/ExampleController.java
+  @RequestMapping(value="/p1lapchart/api/{id}", method=RequestMethod.GET)
+  @ResponseBody
+  public JsonNode getByID(@PathVariable String id, HttpServletRequest req, HttpServletResponse resp) {
+	return _getByID(id, req, resp);
+  }
+  
+  @RequestMapping(method=RequestMethod.GET)
+  @ResponseBody
+  public JsonNode splat(HttpServletRequest req, HttpServletResponse resp) {
+    String id = "12345";
+    String pathinfo = req.getPathInfo();
+    if (pathinfo.startsWith("/api/")) {
+    	id = pathinfo.substring(5);
+    }
+	return _getByID(id, req, resp);
   }
   
   private String getSource(String id) {
