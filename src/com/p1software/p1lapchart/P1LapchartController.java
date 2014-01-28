@@ -69,7 +69,12 @@ public class P1LapchartController implements InitializingBean {
   public JsonNode getByID(@PathVariable String id, HttpServletRequest req, HttpServletResponse resp) {
 	return _getByID(id, req, resp);
   }
-  
+
+  // KLUGE KLUGE KLUGE KLUGE KLUGE KLUGE
+  //
+  // Kluge for combined p1software-eb1 uber WAR for elastic beanstalk's single
+  // WAR deployment!  When used in the p1software-eb1 project, the getByID
+  // mapping above does not fire!  Instead seem to need this approach. 
   @RequestMapping(method=RequestMethod.GET)
   @ResponseBody
   public JsonNode splat(HttpServletRequest req, HttpServletResponse resp) {
@@ -80,7 +85,7 @@ public class P1LapchartController implements InitializingBean {
     }
 	return _getByID(id, req, resp);
   }
-  
+
   private String getSource(String id) {
     return "http://www.mylaps.com/api/eventlapchart?id=" + id;
   }
