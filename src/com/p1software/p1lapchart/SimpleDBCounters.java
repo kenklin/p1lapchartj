@@ -285,7 +285,7 @@ public class SimpleDBCounters {
 	 * @return Number of entries that were not successfully flushed
 	 */
 	public synchronized int flush() {
-		info("flush: unflushedCounters=" + unflushedCounters);
+//		info("flush: unflushedCounters=" + unflushedCounters);
 		if (unflushedCounters > 0) {
 			unflushedCounters = 0;
 			for (Map.Entry<String, Count> entry : counters.entrySet()) {
